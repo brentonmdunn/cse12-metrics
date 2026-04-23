@@ -60,8 +60,8 @@ Record one LLM call from a VM.
 
 | Field | Type | Description |
 |---|---|---|
-| `name` | string | VM fleet name (e.g. `"grader"`) |
-| `submission_num` | integer | Numerically increasing, unique within `name` |
+| `student_uuid` | string | UUID identifying the student (no names stored) |
+| `submission_num` | integer | Numerically increasing, unique within `student_uuid` |
 | `assignment_id` | string | Assignment identifier (e.g. `"hw3"`) |
 | `question_num` | integer | Question number within the assignment |
 | `run_token` | string | UUID generated once at VM startup (`uuid.uuid4()`); pass the same value for all events in this grading run. The server maps it to a `grading_run` number automatically. |
@@ -74,18 +74,18 @@ Record one LLM call from a VM.
 curl -X POST http://your-vps:7591/metrics/usage \
   -H "X-API-Key: yourkey" \
   -H "Content-Type: application/json" \
-  -d '{"name":"grader","submission_num":42,"assignment_id":"hw3","question_num":1,"run_token":"f47ac10b-58cc-4372-a567-0e02b2c3d479","input_tokens":1200,"output_tokens":400}'
+  -d '{"student_uuid":"a1b2c3d4-0000-0000-0000-000000000000","submission_num":42,"assignment_id":"hw3","question_num":1,"run_token":"f47ac10b-58cc-4372-a567-0e02b2c3d479","input_tokens":1200,"output_tokens":400}'
 ```
 
 **Responses**
 - `201` — recorded
-- `409` — duplicate `(name, submission_num, assignment_id, question_num, grading_run)`, ignored
+- `409` — duplicate `(student_uuid, submission_num, assignment_id, question_num, grading_run)`, ignored
 
 ---
 
 ### `GET /metrics/usage/by-question`
 
-Input/output tokens per name for a specific `assignment_id` and `question_num`, using only the latest `submission_num` and latest `grading_run` per name.
+Input/output tokens per student for a specific `assignment_id` and `question_num`, using only the latest `submission_num` and latest `grading_run` per student.
 
 **Query params**
 
@@ -105,8 +105,8 @@ curl "http://your-vps:7591/metrics/usage/by-question?assignment_id=hw3&question_
 
 ```json
 [
-  {"name": "grader", "submission_num": 42, "grading_run": 2, "input_tokens": 1200, "output_tokens": 400},
-  {"name": "scorer", "submission_num": 7,  "grading_run": 1, "input_tokens": 800,  "output_tokens": 300}
+  {"student_uuid": "a1b2c3d4-...", "submission_num": 42, "grading_run": 2, "input_tokens": 1200, "output_tokens": 400},
+  {"student_uuid": "e5f6a7b8-...", "submission_num": 7,  "grading_run": 1, "input_tokens": 800,  "output_tokens": 300}
 ]
 ```
 
@@ -114,7 +114,7 @@ curl "http://your-vps:7591/metrics/usage/by-question?assignment_id=hw3&question_
 
 ### `GET /metrics/usage/totals`
 
-Sum of tokens across **all names**, counting only the highest `submission_num` per name. Use this to get the current total cost baseline.
+Sum of tokens across **all students**, counting only the highest `submission_num` per student. Use this to get the current total cost baseline.
 
 **Example**
 
@@ -131,14 +131,14 @@ curl http://your-vps:7591/metrics/usage/totals \
 
 ---
 
-### `GET /metrics/usage/latest-per-name`
+### `GET /metrics/usage/latest-per-student`
 
-Per-name breakdown, counting only the highest `submission_num` for each name.
+Per-student breakdown, counting only the highest `submission_num` for each student.
 
 **Example**
 
 ```bash
-curl http://your-vps:7591/metrics/usage/latest-per-name \
+curl http://your-vps:7591/metrics/usage/latest-per-student \
   -H "X-API-Key: yourkey"
 ```
 
@@ -146,8 +146,8 @@ curl http://your-vps:7591/metrics/usage/latest-per-name \
 
 ```json
 [
-  {"name": "grader", "submission_num": 42, "input_tokens": 18400, "output_tokens": 5200, "total_tokens": 23600},
-  {"name": "scorer", "submission_num": 7,  "input_tokens": 3100,  "output_tokens": 900,  "total_tokens": 4000}
+  {"student_uuid": "a1b2c3d4-...", "submission_num": 42, "input_tokens": 18400, "output_tokens": 5200, "total_tokens": 23600},
+  {"student_uuid": "e5f6a7b8-...", "submission_num": 7,  "input_tokens": 3100,  "output_tokens": 900,  "total_tokens": 4000}
 ]
 ```
 
@@ -155,13 +155,13 @@ curl http://your-vps:7591/metrics/usage/latest-per-name \
 
 ### `GET /metrics/usage`
 
-Raw event log. Optionally filter by `name` and/or `submission_num`.
+Raw event log. Optionally filter by `student_uuid` and/or `submission_num`.
 
 **Query params**
 
 | Param | Type | Description |
 |---|---|---|
-| `name` | string | Filter by fleet name |
+| `student_uuid` | string | Filter by student UUID |
 | `submission_num` | integer | Filter by submission ID |
 | `grading_run` | integer | Filter by grading run number |
 
@@ -171,11 +171,11 @@ Raw event log. Optionally filter by `name` and/or `submission_num`.
 # all events
 curl "http://your-vps:7591/metrics/usage" -H "X-API-Key: yourkey"
 
-# all events for a fleet
-curl "http://your-vps:7591/metrics/usage?name=grader" -H "X-API-Key: yourkey"
+# all events for a student
+curl "http://your-vps:7591/metrics/usage?student_uuid=a1b2c3d4-..." -H "X-API-Key: yourkey"
 
 # all events for one submission
-curl "http://your-vps:7591/metrics/usage?name=grader&submission_num=42" -H "X-API-Key: yourkey"
+curl "http://your-vps:7591/metrics/usage?student_uuid=a1b2c3d4-...&submission_num=42" -H "X-API-Key: yourkey"
 ```
 
 **Response** — array of raw event rows, newest first:
@@ -184,7 +184,7 @@ curl "http://your-vps:7591/metrics/usage?name=grader&submission_num=42" -H "X-AP
 [
   {
     "event_id": 7,
-    "name": "grader",
+    "student_uuid": "a1b2c3d4-...",
     "submission_num": 42,
     "assignment_id": "hw3",
     "question_num": 1,
@@ -206,11 +206,11 @@ curl "http://your-vps:7591/metrics/usage?name=grader&submission_num=42" -H "X-AP
 export METRICS_URL=http://your-vps:7591
 export METRICS_API_KEY=yourkey
 
-python client.py                                          # latest-per-name summary (default)
-python client.py --assignment-id hw3 --question-num 1     # tokens per name for a specific question
-python client.py --all                                    # all raw events
-python client.py --name grader                            # raw events for one fleet
-python client.py --name grader --submission-num 42        # single submission
+python client.py                                                      # latest-per-student summary (default)
+python client.py --assignment-id hw3 --question-num 1                 # tokens per student for a specific question
+python client.py --all                                                 # all raw events
+python client.py --student-uuid a1b2c3d4-...                          # raw events for one student
+python client.py --student-uuid a1b2c3d4-... --submission-num 42      # single submission
 ```
 
 Pass `--url` and `--key` as flags instead of env vars if preferred.
