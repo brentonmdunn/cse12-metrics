@@ -1,0 +1,13 @@
+services:
+  api:
+    build: .
+    ports:
+      - "7591:7591"
+    volumes:
+      - db-data:/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  db-data:
