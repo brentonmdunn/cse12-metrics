@@ -26,7 +26,7 @@ def init_db():
     conn.execute("""
         CREATE TABLE IF NOT EXISTS usage_events (
             event_id      INTEGER PRIMARY KEY AUTOINCREMENT,
-            name          TEXT    NOT NULL,
+            student_uuid  TEXT    NOT NULL,
             submission_num INTEGER NOT NULL,
             assignment_id TEXT    NOT NULL,
             question_num  INTEGER NOT NULL,
@@ -34,20 +34,20 @@ def init_db():
             output_tokens INTEGER NOT NULL,
             created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
             grading_run   INTEGER NOT NULL DEFAULT 1,
-            UNIQUE (name, submission_num, assignment_id, question_num, grading_run)
+            UNIQUE (student_uuid, submission_num, assignment_id, question_num, grading_run)
         )
     """)
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_name_id ON usage_events (name, submission_num)"
+        "CREATE INDEX IF NOT EXISTS idx_student_uuid ON usage_events (student_uuid, submission_num)"
     )
     conn.execute("""
         CREATE TABLE IF NOT EXISTS run_tokens (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            name          TEXT    NOT NULL,
+            student_uuid  TEXT    NOT NULL,
             submission_num INTEGER NOT NULL,
             run_token     TEXT    NOT NULL,
             grading_run   INTEGER NOT NULL,
-            UNIQUE (name, submission_num, run_token)
+            UNIQUE (student_uuid, submission_num, run_token)
         )
     """)
     conn.commit()
