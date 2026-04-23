@@ -2,11 +2,11 @@
 """Query the cse12-metrics API from a local machine.
 
 Usage:
-  python client.py                                         # latest submission per name (default)
-  python client.py --assignment-id hw3 --question-num 1   # tokens per name for a specific question
-  python client.py --all                                   # all raw events
-  python client.py --name grader                           # raw events filtered by name
-  python client.py --name grader --submission-num 5        # single submission events
+  python client.py                                                     # latest submission per student (default)
+  python client.py --assignment-id hw3 --question-num 1               # tokens per student for a specific question
+  python client.py --all                                               # all raw events
+  python client.py --student-uuid <uuid>                               # raw events filtered by student UUID
+  python client.py --student-uuid <uuid> --submission-num 5           # single submission events
 
 Env vars (or pass as flags):
   METRICS_URL     base URL of the API   (default: http://localhost:8000)
@@ -54,7 +54,7 @@ def main() -> None:
                         help="API base URL")
     parser.add_argument("--key", default=os.environ.get("METRICS_API_KEY"),
                         help="API key (or set METRICS_API_KEY)")
-    parser.add_argument("--name", help="Filter raw events by name")
+    parser.add_argument("--student-uuid", dest="student_uuid", help="Filter raw events by student UUID")
     parser.add_argument("--submission-num", type=int, dest="submission_num",
                         help="Filter raw events by submission_num")
     parser.add_argument("--grading-run", type=int, dest="grading_run",
@@ -78,26 +78,26 @@ def main() -> None:
     if args.assignment_id and args.question_num is not None:
         params = {"assignment_id": args.assignment_id, "question_num": args.question_num}
         rows = fetch(f"{base}/metrics/usage/by-question?{urlencode(params)}", args.key)
-        print_table(rows, ["name", "submission_num", "grading_run", "input_tokens", "output_tokens"])
+        print_table(rows, ["student_uuid", "submission_num", "grading_run", "input_tokens", "output_tokens"])
         return
 
-    raw_mode = args.all_events or args.name or args.submission_num is not None or args.grading_run is not None
+    raw_mode = args.all_events or args.student_uuid or args.submission_num is not None or args.grading_run is not None
 
     if raw_mode:
         params: dict = {}
-        if args.name:
-            params["name"] = args.name
+        if args.student_uuid:
+            params["student_uuid"] = args.student_uuid
         if args.submission_num is not None:
             params["submission_num"] = args.submission_num
         if args.grading_run is not None:
             params["grading_run"] = args.grading_run
         url = f"{base}/metrics/usage" + (f"?{urlencode(params)}" if params else "")
         rows = fetch(url, args.key)
-        print_table(rows, ["name", "submission_num", "assignment_id", "question_num",
+        print_table(rows, ["student_uuid", "submission_num", "assignment_id", "question_num",
                             "grading_run", "input_tokens", "output_tokens", "created_at"])
     else:
-        rows = fetch(f"{base}/metrics/usage/latest-per-name", args.key)
-        print_table(rows, ["name", "submission_num", "input_tokens",
+        rows = fetch(f"{base}/metrics/usage/latest-per-student", args.key)
+        print_table(rows, ["student_uuid", "submission_num", "input_tokens",
                             "output_tokens", "total_tokens"])
 
 
